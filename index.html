@@ -5,7 +5,7 @@ let token=sessionStorage.getItem('arena_brain_token')||'',organizers=[],working=
 function showError(s){$('error').textContent=s;$('error').classList.remove('hidden')}
 function clearError(){$('error').textContent='';$('error').classList.add('hidden')}
 async function request(path,body){const resp=await fetch(API+'/api/brain'+path,{method:body?'POST':'GET',headers:{...(body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{})},...(body?{body:JSON.stringify(body)}:{})});const result=await resp.json().catch(()=>({}));if(!resp.ok){if(resp.status===401&&token){sessionStorage.removeItem('arena_brain_token');token=''}throw Error(result.error||'Solicitação não concluída')}return result}
-function loginView(){$('login').hidden=false;$('app').hidden=true;$('setup').hidden=true;$('logout').hidden=true}
+function loginView(){$('login').hidden=false;$('app').hidden=true;$('logout').hidden=true}
 async function logout(){try{if(token)await request('/logout',{})}catch(e){}token='';sessionStorage.removeItem('arena_brain_token');organizers=[];$('loginForm').reset();clearError();loginView()}
 $('logout').onclick=logout;
 function page(name){for(const id of ['overview','organizers','events','settings'])$(id).hidden=id!==name;document.querySelectorAll('[data-page]').forEach(b=>b.classList.toggle('selected',b.dataset.page===name));$('heading').textContent=({overview:'Visão geral',organizers:'Organizadores',events:'Eventos',settings:'Configurações'})[name]}
@@ -15,7 +15,7 @@ function draw(){const q=$('search').value.trim().toLocaleLowerCase('pt-BR'),rows
 $('search').addEventListener('input',draw);
 async function refresh(){const data=await request('/organizers');organizers=data.organizers||[];draw()}
 async function approve(user,b){if(working||!confirm('Aprovar '+user.name+'?'))return;working=true;b.disabled=true;clearError();try{await request('/organizers/'+user.id+'/approve',{});await refresh()}catch(e){showError(e.message)}finally{working=false;b.disabled=false}}
-async function dashboard(me){await refresh();$('adminName').textContent='Administrador: '+me.email;$('login').hidden=true;$('setup').hidden=true;$('app').hidden=false;$('logout').hidden=false;page('overview')}
+async function dashboard(me){await refresh();$('adminName').textContent='Administrador: '+me.email;$('login').hidden=true;$('app').hidden=false;$('logout').hidden=false;page('overview')}
 $('loginForm').onsubmit=async e=>{e.preventDefault();const b=e.target.querySelector('button[type=submit]');b.disabled=true;clearError();try{const auth=await request('/login',Object.fromEntries(new FormData(e.target)));if(auth.user?.role!=='master')throw Error('Sem permissão de administrador');token=auth.token;sessionStorage.setItem('arena_brain_token',token);await dashboard(await request('/me'))}catch(e){token='';sessionStorage.removeItem('arena_brain_token');showError(e.message)}finally{b.disabled=false}};
 (async()=>{if(token){try{await dashboard(await request('/me'));return}catch(e){sessionStorage.removeItem('arena_brain_token');token=''}}loginView()})();
 </script></body></html>
